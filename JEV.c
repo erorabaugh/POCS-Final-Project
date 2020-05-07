@@ -1,4 +1,3 @@
-
 #define JEV_VERSION "0.0.1"
 #define _BSD_SOURCE
 #define _GNU_SOURCE
@@ -94,6 +93,7 @@ enum KEY_ACTION{
        CTRL_D = 4,         /* Ctrl-d */
        CTRL_F = 6,         /* Ctrl-f */
        CTRL_H = 8,         /* Ctrl-h */
+       CTRL_K=11,
        TAB = 9,            /* Tab */
        CTRL_L = 12,        /* Ctrl+l */
        ENTER = 13,         /* Enter */
@@ -224,7 +224,6 @@ int enableRawMode(int fd) {
 //error giving piece of code 
 
 /* Read a key from the terminal put in raw mode, trying to handle
-
 * escape sequences. */
 int editorReadKey(int fd) { 
 //read one key press and return it 
@@ -633,15 +632,47 @@ void editorRowAppendString(erow *row, char *s, size_t len) {
    editorUpdateRow(row);
 
 
-  // E.dirty++;
+   E.dirty++;
 
 
 }
 
-void copy(int cut){
+void copy(){
+ /* char str[100];
+  for(int i=0; i<=(E.row[E.cy].chars[E.cx]);i++){
+    if(E.row[E.cy].chars[E.cx+i]!=' ' && E.row[E.cy].chars[E.cx+i]!='\0')
+    str[i]=E.row[E.cy].chars[E.cx+i];
+    else break;
+  }*/
+  
+  int len=0;
+   for(int i=0; i<=(E.row[E.cy].chars[E.cx]);i++){
+    if(!isspace(E.row[E.cy].chars[E.cx+i]) && E.row[E.cy].chars[E.cx+i]!='\0' && isprint(E.row[E.cy].chars[E.cx+i]))
+      len++;
+    else break;
+  }
+
+  char str[len];
+  if(len<=0){
+    editorSetStatusMessage("you can't copy that!");
+  }
+  else if(len>0){
+  for(int i=0; i<=(E.row[E.cy].chars[E.cx]);i++){
+    if(!isspace(E.row[E.cy].chars[E.cx+i]) && E.row[E.cy].chars[E.cx+i]!='\0'){
+    //str=realloc(str,len);
+    str[i]=E.row[E.cy].chars[E.cx+i];
+  }
+    else break;
+  }
+  E.copied_char_buffer=realloc(E.copied_char_buffer, strlen(str));
+  strcpy(E.copied_char_buffer, str);
+  editorSetStatusMessage("Text copied");
+}
+}
+void copyRow(){
 E.copied_char_buffer=realloc(E.copied_char_buffer, strlen(E.row[E.cy].chars)+1);
 strcpy(E.copied_char_buffer, E.row[E.cy].chars);
-editorSetStatusMessage(cut ? "Text cut" : "Text copied");
+editorSetStatusMessage("Text copied");
 }
 
 void paste(){
@@ -1162,8 +1193,11 @@ void editorProcessKeypress(int fd) {
    case CTRL_C:        /* Ctrl-c */
        /* We ignore ctrl-c, it can't be so simple to lose the changes
         * to the edited file. */
-       copy(1);
+       copy();
        break;
+  case CTRL_K:
+      copyRow();
+      break;
   case CTRL_V:
       paste();
       break;
@@ -1263,4 +1297,3 @@ int main(int argc, char **argv) {
    }
    return 0;
 }
-
