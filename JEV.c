@@ -1,4 +1,4 @@
-#define JEV_VERSION "0.0.1"
+#define NAME "JEV"
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 
@@ -874,7 +874,7 @@ void editorRefreshScreen(void) {
            if (E.numrows == 0 && y == E.screenrows/3) {
                char welcome[80];
                int welcomelen = snprintf(welcome,sizeof(welcome),
-                   "JEV editor -- verison %s\x1b[0K\r\n", JEV_VERSION);
+                  "Jesse Eden Vish for all you text editor needs. You can call me %s\x1b[0K\r\n", NAME);
                int padding = (E.screencols-welcomelen)/2;
 //padding is the space between the number of extra cols around the size of the welcome message divided by 2. This centers ir 
                if (padding) {
@@ -990,10 +990,10 @@ void editorSetStatusMessage(const char *fmt, ...) {
 }
 /* =============================== Find mode ================================ */
 
-#define KILO_QUERY_LEN 256
+#define JEV_QUERY_LEN 256
 
 void editorFind(int fd) {
-   char query[KILO_QUERY_LEN+1] = {0};
+   char query[JEV_QUERY_LEN+1] = {0};
    int qlen = 0;
    int last_match = -1; /* Last line where a match was found. -1 for none. */
    int find_next = 0; /* if 1 search next, if -1 search prev. */
@@ -1036,7 +1036,7 @@ void editorFind(int fd) {
        } else if (c == ARROW_LEFT || c == ARROW_UP) {
            find_next = -1;
        } else if (isprint(c)) {
-           if (qlen < KILO_QUERY_LEN) {
+           if (qlen < JEV_QUERY_LEN) {
                query[qlen++] = c;
                query[qlen] = '\0';
                last_match = -1;
@@ -1175,13 +1175,13 @@ void editorMoveCursor(int key) {
 
 /* Process events arriving from the standard input, which is, the user
 * is typing stuff on the terminal. */
-#define KILO_QUIT_TIMES 3
+#define JEV_QUIT_TIMES 3
 //how many more times you gotta press ctrl q to quit unsaved
 void editorProcessKeypress(int fd) {
 //processes the keys pressed, do different things based on which keys are pressed; maps keys to editor functions 
    /* When the file is modified, requires Ctrl-q to be pressed N times
     * before actually quitting. */
-   static int quit_times = KILO_QUIT_TIMES;
+   static int quit_times = JEV_QUIT_TIMES;
    int c = editorReadKey(fd);
 
    switch(c) {
@@ -1250,7 +1250,7 @@ void editorProcessKeypress(int fd) {
        editorInsertChar(c);
        break;
    }
-   quit_times = KILO_QUIT_TIMES; /* Reset it to the original value. */
+   quit_times = JEV_QUIT_TIMES; /* Reset it to the original value. */
 }
 
 int editorFileWasModified(void) {
@@ -1282,7 +1282,7 @@ void initEditor(void) {
 int main(int argc, char **argv) {
 
    if (argc != 2) { //if theres not just one thing after ./JEV, print error
-       fprintf(stderr,"JEV: Usage: kilo <filename>\n");
+       fprintf(stderr,"JEV: Usage: JEV <filename>\n");
        exit(1);
    }
    initEditor();
