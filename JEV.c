@@ -222,6 +222,12 @@ int enableRawMode(int fd) {
 }
 //error giving piece of code 
 
+void clearScreen()  //Clears the screen
+{
+  const char *CLEAR_SCREEN_ANSI = "\e[1;1H\e[2J";
+  write(STDOUT_FILENO, CLEAR_SCREEN_ANSI, 12);
+}
+
 /* Read a key from the terminal put in raw mode, trying to handle
 * escape sequences. */
 int editorReadKey(int fd) { 
@@ -1208,6 +1214,7 @@ void editorProcessKeypress(int fd) {
            quit_times--;
            return;
        }
+       clearScreen();
        exit(0);
        break;
    case CTRL_S:        /* Ctrl-s */
@@ -1241,7 +1248,7 @@ void editorProcessKeypress(int fd) {
        editorMoveCursor(c);
        break;
    case CTRL_L: /* ctrl+l, clear screen */
-       /* Just refresht the line as side effect. */
+       /* Just refresh the line as side effect. */
        break;
    case ESC:
        /* Nothing to do for ESC in this mode. */
