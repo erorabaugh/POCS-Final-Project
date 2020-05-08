@@ -229,7 +229,6 @@ void clearScreen()  //Clears the screen
   write(STDOUT_FILENO, CLEAR_SCREEN_ANSI, 12);
 }
 
-
 /* Read a key from the terminal put in raw mode, trying to handle
 * escape sequences. */
 int editorReadKey(int fd) { 
@@ -654,7 +653,7 @@ void copy(){
 
   char str[len];
   if(len<=0){
-    editorSetStatusMessage("you can't copy that!");
+    editorSetStatusMessage("JEV: you can't copy that!");
   }
   else if(len>0){
   for(int i=0; i<=(E.row[E.cy].chars[E.cx]);i++){
@@ -666,13 +665,13 @@ void copy(){
   }
   E.copied_char_buffer=realloc(E.copied_char_buffer, strlen(str));
   strcpy(E.copied_char_buffer, str);
-  editorSetStatusMessage("Text copied");
+  editorSetStatusMessage("JEV: Text copied");
 }
 }
 void copyRow(){
 E.copied_char_buffer=realloc(E.copied_char_buffer, strlen(E.row[E.cy].chars)+1);
 strcpy(E.copied_char_buffer, E.row[E.cy].chars);
-editorSetStatusMessage("Text copied");
+editorSetStatusMessage("JEV: Text copied");
 }
 
 void paste(){
@@ -827,12 +826,12 @@ int editorSave(void) {
    close(fd);
    free(buf);
    E.dirty = 0;
-   editorSetStatusMessage("%d BYTES WERE WRITTEN TO THE DISK", len);
+   editorSetStatusMessage("JEV: %d BYTES WERE WRITTEN TO THE DISK", len);
    return 0;
    writeerr:
    free(buf);
    if (fd != -1) close(fd);
-   editorSetStatusMessage("BRO WE CAN’T SAVE THAT! ur giving me this error dude: %s",strerror(errno));
+   editorSetStatusMessage("JEV: BRO WE CAN’T SAVE THAT! ur giving me this error dude: %s",strerror(errno));
    return 1;
 }
 
@@ -879,14 +878,14 @@ void editorRefreshScreen(void) {
                int padding = (E.screencols-welcomelen)/2;
 //padding is the space between the number of extra cols around the size of the welcome message divided by 2. This centers ir 
                if (padding) {
-                   abAppend(&ab,"~",1);
-//puts ~ appended to buffer
+                   abAppend(&ab,"|",1);
+//puts | appended to buffer
                    padding--;
                }
                while(padding--) abAppend(&ab," ",1);
                abAppend(&ab,welcome,welcomelen);
            } else {
-               abAppend(&ab,"~\x1b[0K\r\n",7);
+               abAppend(&ab,"|\x1b[0K\r\n",7);
            }
            continue;
        }
@@ -1018,7 +1017,7 @@ void editorFind(int fd) {
 
    while(1) {
        editorSetStatusMessage(
-           "Search: %s (Use ESC/Arrows/Enter)", query);
+           "JEV: Search: %s (Use ESC/Arrows/Enter)", query);
        editorRefreshScreen();
        int c = editorReadKey(fd);
        if (c == DEL_KEY || c == CTRL_H || c == BACKSPACE) {
@@ -1203,7 +1202,7 @@ void editorProcessKeypress(int fd) {
    case CTRL_Q:        /* Ctrl-q */
        /* Quit if the file was already saved. */
        if (E.dirty && quit_times) {
-           editorSetStatusMessage("CHILL OUT!! This file has unsaved changes sir…. "
+           editorSetStatusMessage("JEV: editorSetStatusMessage CHILL OUT!! This file has unsaved changes sir…. "
                "Press Ctrl-Q %d more times to quit.", quit_times);
            quit_times--;
            return;
@@ -1242,7 +1241,7 @@ void editorProcessKeypress(int fd) {
        editorMoveCursor(c);
        break;
    case CTRL_L: /* ctrl+l, clear screen */
-       /* Just refresht the line as side effect. */
+       /* Just refresh the line as side effect. */
        break;
    case ESC:
        /* Nothing to do for ESC in this mode. */
@@ -1274,23 +1273,23 @@ void initEditor(void) {
    if (getWindowSize(STDIN_FILENO,STDOUT_FILENO,
                      &E.screenrows,&E.screencols) == -1)
    {
-       perror("Unable to query the screen for size (columns / rows)");
+       perror("JEV: Unable to query the screen for size (columns / rows)");
        exit(1);
    }
    E.screenrows -= 2; /* Get room for status bar. */
 }
 
 int main(int argc, char **argv) {
-   if (argc != 2) { //if theres not just one thing after ./kilo, print error
-       fprintf(stderr,"Usage: kilo <filename>\n");
+
+   if (argc != 2) { //if theres not just one thing after ./JEV, print error
+       fprintf(stderr,"JEV: Usage: kilo <filename>\n");
        exit(1);
    }
    initEditor();
    editorSelectSyntaxHighlight(argv[1]);
    editorOpen(argv[1]);
    enableRawMode(STDIN_FILENO);
-   editorSetStatusMessage(
-       "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
+   editorSetStatusMessage("JEV: HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
    while(1) {
        editorRefreshScreen();
        editorProcessKeypress(STDIN_FILENO);
