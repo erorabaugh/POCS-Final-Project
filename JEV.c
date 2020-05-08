@@ -2,7 +2,6 @@
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 
-
 #include <termios.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -89,12 +88,10 @@ static struct editorConfig E;
 
 enum KEY_ACTION{
        KEY_NULL = 0,       /* NULL */
-       CTRL_B=2,
        CTRL_C = 3,         /* Ctrl-c */
        CTRL_D = 4,         /* Ctrl-d */
        CTRL_F = 6,         /* Ctrl-f */
        CTRL_H = 8,         /* Ctrl-h */
-       CTRL_I=9,
        CTRL_K=11,
        TAB = 9,            /* Tab */
        CTRL_L = 12,        /* Ctrl+l */
@@ -247,7 +244,7 @@ int editorReadKey(int fd) {
                if (seq[1] >= '0' && seq[1] <= '9') {
                    /* Extended escape, read additional byte. */
                    if (read(fd,seq+2,1) == 0) return ESC;
-                   if (seq[2] == '~') {
+                   if (seq[2] == '|') {
                        switch(seq[1]) {
                        case '3': return DEL_KEY;
                        case '5': return PAGE_UP;
@@ -686,6 +683,7 @@ editorRowAppendString(&E.row[E.cy],E.copied_char_buffer, strlen(E.copied_char_bu
 E.cx+=strlen(E.copied_char_buffer);
 
 
+
 }
 
 /* Delete the character at offset 'at' from the specified row. */
@@ -869,7 +867,6 @@ void editorRefreshScreen(void) {
    erow *r;
    char buf[32];
    struct abuf ab = ABUF_INIT;
-   abAppend(&ab,"\x1b[7m",4); //reverses colors of text editor 
    abAppend(&ab,"\x1b[?25l",6); /* Hide cursor. */
    abAppend(&ab,"\x1b[H",3); /* Go home. */
    for (y = 0; y < E.screenrows; y++) {
@@ -882,14 +879,14 @@ void editorRefreshScreen(void) {
                int padding = (E.screencols-welcomelen)/2;
 //padding is the space between the number of extra cols around the size of the welcome message divided by 2. This centers ir 
                if (padding) {
-                   abAppend(&ab,"~",1);
+                   abAppend(&ab,"|",1);
 //puts ~ appended to buffer
                    padding--;
                }
                while(padding--) abAppend(&ab," ",1);
                abAppend(&ab,welcome,welcomelen);
            } else {
-               abAppend(&ab,"~\x1b[0K\r\n",7);
+               abAppend(&ab,"|\x1b[0K\r\n",7);
            }
            continue;
        }
@@ -1283,6 +1280,9 @@ void initEditor(void) {
 }
 
 int main(int argc, char **argv) {
+
+  //printf("\033[31;1;4m\033[0m");
+
    if (argc != 2) { //if theres not just one thing after ./kilo, print error
        fprintf(stderr,"Usage: kilo <filename>\n");
        exit(1);
@@ -1297,6 +1297,5 @@ int main(int argc, char **argv) {
        editorRefreshScreen();
        editorProcessKeypress(STDIN_FILENO);
    }
-   
    return 0;
 }
