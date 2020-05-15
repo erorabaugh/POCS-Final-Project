@@ -139,7 +139,7 @@ enum KEY_ACTION{
 
 
 void editorSetStatusMessage(const char *fmt, ...);
-char *C_HL_extensions[] = {".c",".cpp",NULL};
+char *C_HL_extensions[] = {".c",".cpp",".h",".java",".py",NULL};
 char *C_HL_keywords[] = {
        /* A few C / C++ keywords */
 
