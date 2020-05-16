@@ -56,6 +56,7 @@ typedef struct erow {
    char *chars;        /* Row content. */
    char *render;       /* Row content "rendered" for screen (for TABs). */
    unsigned char *hl;  /* Syntax highlight type for each character in render.*/
+   int *bd;  /* Bold type for each character in render.*/
    int hl_oc;          /* Row had open comment at end in last syntax highlight
                           check. */
 } erow;
@@ -69,6 +70,7 @@ struct editorConfig {
    int screencols; /* Number of cols that we can show */
    int numrows;    /* Number of rows */
    int rawmode;    /* Is terminal raw mode enabled? */
+   int bolded;     /* Bolded if 1, unbolded if 0 */
    erow *row;      /* Rows */ //allows for multiple lines
   //editor config stores a row object too that can get size etc
    int dirty;      /* File modified but not saved. */
@@ -76,7 +78,8 @@ struct editorConfig {
    char *filename; /* Currently open filename */
    char statusmsg[80];
    time_t statusmsg_time;
-  char *copied_char_buffer;
+   char *copied_char_buffer;
+   int *copied_bd_buffer;
    struct editorSyntax *syntax;    /* Current syntax highlight, or NULL. */
 //filewords, keywords, multiline comments etc stuff to highlight
 
@@ -86,10 +89,9 @@ struct editorConfig {
 static struct editorConfig E; 
 //global variable holding editor state, E holds all above variables
 
-
 enum KEY_ACTION{
        KEY_NULL = 0,       /* NULL */
-       CTRL_B=2,
+       CTRL_B=2,           /* Ctrl-b */
        CTRL_C = 3,         /* Ctrl-c */
        CTRL_D = 4,         /* Ctrl-d */
        CTRL_F = 6,         /* Ctrl-f */
@@ -546,6 +548,7 @@ void editorInsertRow(int at, char *s, size_t len) {
    E.row[at].chars = malloc(len+1);
    memcpy(E.row[at].chars,s,len+1);
    E.row[at].hl = NULL;
+   E.row[at].bd = NULL;
    E.row[at].hl_oc = 0;
    E.row[at].render = NULL;
    E.row[at].rsize = 0;
@@ -560,6 +563,7 @@ void editorFreeRow(erow *row) {
    free(row->render);
    free(row->chars);
    free(row->hl);
+   free(row->bd);
 }
 /* Remove the row at the specified position, shifting the remainign on the
 * top. */
@@ -599,6 +603,7 @@ char *editorRowsToString(int *buflen) {
 /* Insert a character at the specified position in a row, moving the remaining
 * chars on the right if needed. */
 void editorRowInsertChar(erow *row, int at, int c) {
+
    if (at > row->size) {
        /* Pad the string with spaces if the insert location is outside the
         * current length by more than a single character. */
@@ -617,10 +622,21 @@ void editorRowInsertChar(erow *row, int at, int c) {
    }
    row->chars[at] = c;
    editorUpdateRow(row);
+   
+   row->bd = realloc(row->bd, (row->size + 1) * 4 );
+
+   for(int i = row->size-1; i > at; i--){
+      row->bd[i] = row->bd[i-1];
+   }
+   // Shifts Bold characters after at to match
+
+   row->bd[at] = E.bolded;
+  // Sets new character to bolded state
+
    E.dirty++;
 }
 /* Append the string 's' at the end of a row */
-void editorRowAppendString(erow *row, char *s, size_t len) {
+void editorRowAppendString(erow *row, char *s, int *b, size_t len) {
 
 
    row->chars = realloc(row->chars,row->size+len+1);
@@ -628,6 +644,10 @@ void editorRowAppendString(erow *row, char *s, size_t len) {
 
    memcpy(row->chars+row->size,s,len);
 
+   row->bd = realloc(row->bd,(row->size+len + 1) * 4);
+   for(int i = 0; i < len; i++){
+    row->bd[row->size + i] = b[i];
+   }
 
    row->size += len;
 
@@ -643,6 +663,18 @@ void editorRowAppendString(erow *row, char *s, size_t len) {
 
 }
 
+void boldToggle(){
+  if(E.bolded){
+    E.bolded = 0;
+  }
+  else{
+    E.bolded = 1;
+  }
+  return;
+}
+// Toggles Bold state on and off
+
+
 void copy(){  
   int len=0;
    for(int i=0; i<=(E.row[E.cy].chars[E.cx]);i++){
@@ -651,7 +683,10 @@ void copy(){
     else break;
   }
 
-  char str[len];
+  char *str;
+  str = (char *) malloc(len);
+  int *b;
+  b = (int *) malloc(len * 4);
   if(len<=0){
     editorSetStatusMessage("JEV: you can't copy that!");
   }
@@ -660,17 +695,32 @@ void copy(){
     if(!isspace(E.row[E.cy].chars[E.cx+i]) && E.row[E.cy].chars[E.cx+i]!='\0'){
     //str=realloc(str,len);
     str[i]=E.row[E.cy].chars[E.cx+i];
+
   }
     else break;
   }
   E.copied_char_buffer=realloc(E.copied_char_buffer, strlen(str));
+  E.copied_bd_buffer=realloc(E.copied_bd_buffer, strlen(str) * 4);
   strcpy(E.copied_char_buffer, str);
+  for(int i = 0; i < strlen(str) / 8; i++){
+    //E.copied_bd_buffer[i] = E.row[E.cy].bd[i];
+    E.copied_bd_buffer[i] = 0;
+
+  }
   editorSetStatusMessage("JEV: Text copied");
 }
+
+free(str);
+free(b);
 }
+
 void copyRow(){
 E.copied_char_buffer=realloc(E.copied_char_buffer, strlen(E.row[E.cy].chars)+1);
+E.copied_bd_buffer=realloc(E.copied_bd_buffer, E.row[E.cy].size * 4);
 strcpy(E.copied_char_buffer, E.row[E.cy].chars);
+for(int i = 0; i < E.row[E.cy].size + 1; i++){
+  E.copied_bd_buffer[i] = E.row[E.cy].bd[i];
+}
 editorSetStatusMessage("JEV: Text copied");
 }
 
@@ -679,7 +729,7 @@ if(!E.copied_char_buffer) return;
 if(E.cy==E.numrows)
 editorInsertRow(E.cy, E.copied_char_buffer, strlen(E.copied_char_buffer));
 else
-editorRowAppendString(&E.row[E.cy],E.copied_char_buffer, strlen(E.copied_char_buffer));
+editorRowAppendString(&E.row[E.cy],E.copied_char_buffer, E.copied_bd_buffer, strlen(E.copied_char_buffer));
 E.cx+=strlen(E.copied_char_buffer);
 }
 
@@ -690,6 +740,9 @@ void editorRowDelChar(erow *row, int at) {
    memmove(row->chars+at,row->chars+at+1,row->size-at);
    editorUpdateRow(row);
    row->size--;
+   for(int i = at; i < row->size; i++){
+     row->bd[i] = row->bd[at + 1];
+   }
    E.dirty++;
 }
 
@@ -760,7 +813,7 @@ void editorDelChar() {
        /* Handle the case of column 0, we need to move the current line
         * on the right of the previous one. */
        filecol = E.row[filerow-1].size;
-       editorRowAppendString(&E.row[filerow-1],row->chars,row->size);
+       editorRowAppendString(&E.row[filerow-1],row->chars, row->bd, row->size);
        editorDelRow(filerow);
        row = NULL;
        if (E.cy == 0)
@@ -892,13 +945,24 @@ void editorRefreshScreen(void) {
        r = &E.row[filerow];
        int len = r->rsize - E.coloff;
        int current_color = -1;
+       int current_bold = -1;
        if (len > 0) {
            if (len > E.screencols) len = E.screencols;
 //if length of welcome is longer than columns, make it equal to cols
            char *c = r->render+E.coloff;
            unsigned char *hl = r->hl+E.coloff;
+           int *bd = r->bd+E.coloff;
            int j;
            for (j = 0; j < len; j++) {
+               if (j == 0){
+                 abAppend(&ab,"\x1b[0m", 4);
+                 abAppend(&ab,"\x1b[7m", 4);
+                 if(editorRowHasOpenComment(r)){
+                  abAppend(&ab,"\x1b[36m", 5);
+                 }
+               }
+               // resets graphics
+
                if (hl[j] == HL_NONPRINT) {
                    char sym;
                    abAppend(&ab,"\x1b[7m",4);
@@ -908,7 +972,20 @@ void editorRefreshScreen(void) {
                        sym = '?';
                    abAppend(&ab,&sym,1);
                    abAppend(&ab,"\x1b[0m",4);
-               } else if (hl[j] == HL_NORMAL) {
+               } 
+               else {
+                  if (current_bold == -1 && r->bd[j]){
+                     abAppend(&ab,"\x1b[1m", 4);
+                     current_bold = 1;
+                  }
+                  else if (current_bold == 1 && !r->bd[j]){
+                     abAppend(&ab,"\x1b[0m", 4);
+                     abAppend(&ab,"\x1b[7m",4);
+                     current_bold = -1; 
+                  }
+                  // Format Bold font at beginning of changes to bd
+
+                  if (hl[j] == HL_NORMAL) {
                    if (current_color != -1) {
                        abAppend(&ab,"\x1b[39m",5);
 //sets the default color with 39
@@ -925,6 +1002,7 @@ void editorRefreshScreen(void) {
                    }
                    abAppend(&ab,c+j,1);
                }
+             }
            }
        }
        abAppend(&ab,"\x1b[39m",5);
@@ -1188,6 +1266,9 @@ void editorProcessKeypress(int fd) {
    case ENTER:         /* Enter */
        editorInsertNewline();
        break;
+   case CTRL_B:
+      boldToggle();
+      break;
    case CTRL_C:        /* Ctrl-c */
        /* We ignore ctrl-c, it can't be so simple to lose the changes
         * to the edited file. */
@@ -1267,6 +1348,7 @@ void initEditor(void) {
    E.numrows = 0;
    E.row = NULL;
    E.dirty = 0;
+   E.bolded = 0;
    E.filename = NULL;
    E.syntax = NULL;
 //when E.syntax is null, no syntax hightlighting is to be done; default is no highlights like on txt files etc
